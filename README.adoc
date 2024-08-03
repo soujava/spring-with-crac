@@ -1,0 +1,163 @@
+= Exploring Spring Boot with CraC
+:toc:
+
+== Setup the environment
+
+=== Installing a JDK with support for CRaC:
+
+==== Download and install the JDK with CRaC support
+
+1. Download the JDK with CRaC support from https://www.azul.com/downloads/?package=jdk-crac#zulu[Azul Zulu website]:
+- link:https://cdn.azul.com/zulu/bin/zulu22.30.13-ca-crac-jdk22.0.1-linux_x64.tar.gz[Azul Zulu 22.0.1 + CRaC X64]
+- link:https://cdn.azul.com/zulu/bin/zulu21.30.13-ca-crac-jdk22.0.1-linux_aarch64.tar.gz[Azul Zulu 22.0.1 + CRaC AARCH64]
+
+2. Unpack the tar.gz file and copy the JDK in a folder
++
+[source, bash]
+----
+sudo tar zxvf zulu22.30.13-ca-crac-jdk22.0.1-linux_x64.tar.gz
+----
+3. Move to the folder where the JDK installation will be located
++
+[source, bash]
+----
+mv zulu22.30.13-ca-crac-jdk22.0.1-linux_x64 zulu-22.jdk
+mv zulu-22.jdk /usr/lib/jvm
+----
+4. Set the $JAVA_HOME environment variable to the JDK with CRaC support e.g.
++
+[source, bash]
+----
+export JAVA_HOME=/usr/lib/jvm/zulu-22.jdk
+----
+
+=== install the JDK with CRaC support via SDKMAN
+
+* Install a JDK with CRaC support via SDKMAN:
++
+[source, bash]
+----
+sdk install java 22.0.1.crac-zulu
+----
+
+
+== Grant permissions to run CRIU
+
+
+. Make sure you have the permissions to run CRIU:
+
++
+[source, bash]
+----
+sudo chown root:root $JAVA_HOME/lib/criu
+----
++
+[source, bash]
+----
+sudo chmod u+s $JAVA_HOME/lib/criu
+----
+
+== Build the application
+
+. Open the project folder and run:
++
+[source, bash]
+----
+./mvnw verify
+----
+
+. Now you should find the `spring-with-crac-0.0.1-SNAPSHOT.jar` jar at `target/` directory
+. Create a folder named `tmp_manual_checkpoint` in the project folder (besides the `src` folder)
+
+
+== Start and initialize the MySQL database+
+[source,bash]
+----
+sh create-manual-checkpoint.sh <target/spring-with-crac-0.0.1-SNAPSHOT.jar or PID>
+----
+
+. Start the MySQL database using Docker Compose
+
++
+[source,bash]
+----
+docker compose up -d
+----
+
+== Start the application without any CRaC
+
+. Start the application normally
+
++
+[source,bash]
+----
+./mvnw spring-boot:run
+----
+
+[NOTE]
+====
+A checkpoint can also be compressed (only in Azul Zulu) on the hard drive by executing:
+
+`export CRAC_CRIU_OPTS=--compress`
+
+====
+
+There is a shell script for starting up the app with CRaC support:
+
+- start-manual-crac.sh
+
+So you simply have to un-comment it in this shell script.
+Be aware that the compression at checkpoint and decompression at restoring will take longer.
+Meaning to say the restore will be slower when using a compressed checkpoint (on my machine used here it takes around 150ms to de-compress the checkpoint)
+
+== Start the application and create a checkpoint manually after application startup
+
+. Make sure the folder `tmp_manual_checkpoint` exists
+. Remove all files from the folder `tmp_manual_checkpoint` with:
++
+[source,bash]
+----
+rm -f ./tmp_manual_checkpoint/*.*
+----
+
+. Start the application
++
+[source,bash]
+----
+sh start-manual-crac.sh
+----
+
+== Create the manual checkpoint
+
+There are two ways of creating the checkpoint manually, calling the application jar or the pid
+
+. Calling the application jar
++
+[source,bash]
+----
+jcmd target/spring-with-crac-0.0.1-SNAPSHOT.jar JDK.checkpoint
+----
+
++
+or executing the `create-manual-checkpoint.sh` script with the PID (can be found in the output in the 1st shell window)
++
+[source,bash]
+----
+sh create-manual-checkpoint.sh target/spring-with-crac-0.0.1-SNAPSHOT.jar
+----
+OR
++
+[source,bash]
+----
+sh create-manual-checkpoint.sh <PID>
+----
+. Check if the checkpoint files have been stored in `./tmp_manual_checkpoint`
+
+== Restore the application from the manually created checkpoint
+
+1. Restore the application from the stored checkpoint by executing
++
+[source,bash]
+----
+sh restore-manual-crac.sh
+----
