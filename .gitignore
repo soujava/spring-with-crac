@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+/stats-restore
+/tmp_manual_checkpoint/
