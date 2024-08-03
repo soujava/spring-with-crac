@@ -1,0 +1,15 @@
+version: '3.1'
+services:
+  db:
+    image: mysql:latest
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'spring-crac'
+      MYSQL_USER: 'myuser'
+      MYSQL_PASSWORD: 'secret'
+      MYSQL_ROOT_PASSWORD: 'secret'
+    ports:
+    - "3306:3306"
+    volumes:
+    - ./spring-crac.sql:/docker-entrypoint-initdb.d/spring-crac.sql
